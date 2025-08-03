@@ -13,7 +13,8 @@ echo "   5b. Run with Docker Compose: docker-compose up -d"
 echo "   6b. Check status: docker-compose ps"
 echo "   7b. View logs: docker-compose logs -f"
 echo ""
-echo "💡 Docker automatically loads configuration from .env file" ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
+echo "💡 Docker automatically loads configuration from .env file"
+echo "🔄 Container will auto-restart on failures and system reboots" ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
     echo "⚠️ Warning: This doesn't appear to be a Raspberry Pi"
     echo "Some features may not work correctly."
 fi

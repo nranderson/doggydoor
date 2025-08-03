@@ -150,6 +150,9 @@ docker-compose logs -f
 
 # System resources
 docker stats doggydoor_app_1
+
+# Restart count and uptime
+docker inspect doggydoor-app --format='{{.RestartCount}} restarts, uptime: {{.State.StartedAt}}'
 ```
 
 ### Log Files
@@ -174,6 +177,16 @@ docker stats doggydoor_app_1
 - Rebuild image: `./build.sh && docker-compose up -d`
 - Check container privileges: Container must run with `--privileged` for Bluetooth
 - Verify .env file exists: `ls -la .env` (must be present for configuration)
+- Check restart count: `docker inspect doggydoor-app --format='{{.RestartCount}}'`
+
+### Auto-Restart Behavior
+
+The container is configured with `restart: unless-stopped` which means:
+
+- **Automatic restart** on crashes or failures
+- **Survives system reboots** - restarts when Docker daemon starts
+- **Manual stop respected** - won't restart if you manually stop it with `docker-compose down`
+- **No restart loop protection** - will keep trying to restart failed containers
 
 ### Configuration Issues
 
@@ -208,6 +221,7 @@ docker stats doggydoor_app_1
 - **Non-Root Execution**: Container runs as non-privileged user
 - **HomeKit Encryption**: All HomeKit communication is encrypted
 - **Local Operation**: No cloud dependencies required
+- **Auto-Restart**: Container automatically restarts if it stops or crashes
 
 ## 📦 Project Structure
 
