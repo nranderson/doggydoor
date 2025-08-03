@@ -18,8 +18,6 @@ An intelligent doggy door system that detects **ANY** Apple AirTag within 3 feet
 
 ### For Raspberry Pi (Recommended)
 
-**Option A: Use Pre-built Image (Easiest)**
-
 ```bash
 # 1. Copy to your Raspberry Pi
 scp -r . pi@your-pi-ip:/home/pi/doggydoor
@@ -38,9 +36,8 @@ cd doggydoor
 cp .env.example .env
 nano .env  # Adjust HomeKit settings if needed
 
-# 5. Use pre-built image from GitHub Container Registry
+# 5. Deploy with automatic updates
 cp docker-compose.ghcr.yml docker-compose.yml
-docker-compose pull
 docker-compose up -d
 
 # 6. Check status and logs
@@ -48,19 +45,12 @@ docker-compose ps
 docker-compose logs -f
 ```
 
-**Option B: Build Locally**
+**Features included:**
 
-```bash
-# Follow steps 1-4 above, then:
-
-# 5. Build and run with Docker
-./build.sh
-docker-compose up -d
-
-# 6. Check status and logs
-docker-compose ps
-docker-compose logs -f
-```
+- ✅ **Pre-built images** from GitHub Container Registry
+- ✅ **Automatic updates** via Watchtower (checks every 6 hours)
+- ✅ **Zero-downtime updates** with automatic container restart
+- ✅ **Cleanup** of old images after updates
 
 ### For Development/Testing
 
@@ -159,26 +149,33 @@ Place an AirTag at a known distance and run this tool to improve distance accura
 ### Check System Status
 
 ```bash
-# Container status
+# Container status (both doggydoor and watchtower)
 docker-compose ps
 
-# Live logs
-docker-compose logs -f
+# Live logs from main application
+docker-compose logs -f doggydoor
+
+# Watchtower update logs
+docker-compose logs -f watchtower
 
 # System resources
-docker stats doggydoor_app_1
+docker stats doggydoor-app watchtower
 
 # Restart count and uptime
 docker inspect doggydoor-app --format='{{.RestartCount}} restarts, uptime: {{.State.StartedAt}}'
+
+# Check when Watchtower last checked for updates
+docker logs watchtower --tail=10
 ```
 
 ### Log Files
 
-- Container logs: `docker-compose logs`
+- Main app logs: `docker-compose logs doggydoor`
+- Watchtower logs: `docker-compose logs watchtower`
 - Bluetooth debugging: `sudo systemctl status bluetooth`
 - Docker system: `docker system df`
 
-## 🏭 Automated Builds
+## 🏭 Automated Builds & Updates
 
 ### GitHub Container Registry
 
@@ -189,23 +186,23 @@ Pre-built Docker images are automatically published to GitHub Container Registry
 - **Automated builds:** Daily at 2 AM UTC + on every commit to main
 - **Multi-architecture:** Supports both AMD64 and ARM64 (Raspberry Pi)
 
-### Using Pre-built Images
+### Automatic Updates with Watchtower
 
-```bash
-# Pull the latest image
-docker pull ghcr.io/nranderson/doggydoor:latest
+The system includes **Watchtower** for automatic container updates:
 
-# Use the GHCR compose file
-cp docker-compose.ghcr.yml docker-compose.yml
-docker-compose up -d
-```
+- **Update frequency:** Every 6 hours
+- **Zero-downtime:** Automatically restarts containers with new images
+- **Cleanup:** Removes old images after successful updates
+- **Selective updates:** Only updates containers with the proper labels
+- **Logging:** Full update history in Watchtower logs
 
 ### Build Schedule
 
 - **On commits:** Automatic build when code is pushed to main branch
 - **Daily builds:** Every day at 2 AM UTC to include base image updates
 - **Manual trigger:** Can be triggered manually from GitHub Actions
-- **PR builds:** Test builds on pull requests (not published)`
+- **PR builds:** Test builds on pull requests (not published)
+- **Auto-deployment:** Watchtower picks up new images within 6 hours`
 
 ## 🛠️ Troubleshooting
 

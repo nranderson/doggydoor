@@ -1,10 +1,10 @@
-version: "3.8"
++
 
-# Alternative docker-compose configuration that uses pre-built images from GitHub Container Registry
-# To use this instead of building locally:
-# 1. Rename this file to docker-compose.yml
-# 2. Rename the original docker-compose.yml to docker-compose.local.yml
-# 3. Run: docker-compose pull && docker-compose up -d
+\]rsion: "3.8"
+
+# Docker Compose configuration with automatic updates via Watchtower
+# This setup uses pre-built images from GitHub Container Registry
+# Watchtower automatically checks for new images every 6 hours and updates containers
 
 services:
   doggydoor:
@@ -17,7 +17,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./.env:/app/.env:ro # Mount .env file as read-only
+      - ./.env:/app/.env:ro  # Mount .env file as read-only
     # Environment variables
     env_file:
       - .env
@@ -32,3 +32,33 @@ services:
       - /dev/bus/usb:/dev/bus/usb
     # Restart policy
     restart: unless-stopped
+    # Watchtower labels for automatic updates
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.stop-signal=SIGTERM"
+
+  # Watchtower service for automatic container updates
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: unless-stopped
+    environment:
+      # Check for updates every 6 hours (21600 seconds)
+      - WATCHTOWER_POLL_INTERVAL=21600
+      # Only update containers with the enable label
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Clean up old images after update
+      - WATCHTOWER_CLEANUP=true
+      # Send notifications (optional - configure webhook URL)
+      # - WATCHTOWER_NOTIFICATION_URL=slack://token@channel
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      # Log level
+      - WATCHTOWER_LOG_LEVEL=info
+    volumes:
+      # Mount Docker socket to manage containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Optional: mount timezone
+      - /etc/localtime:/etc/localtime:ro
+    # Run Watchtower with minimal privileges
+    user: root
+    command: --label-enable --cleanup --interval 21600
