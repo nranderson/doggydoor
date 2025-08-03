@@ -1,13 +1,16 @@
 """
 AirTag Detection Module
 Handles Bluetooth Low Energy scanning to detect AirTags and estimate distance
+
+Note: AirTags use MAC address randomization for privacy, so we identify them
+by their Bluetooth advertising data, service UUIDs, and manufacturer data.
 """
 
 import asyncio
 import logging
 import math
 import time
-from typing import Optional, Callable
+from typing import Optional, Callable, Set, Awaitable, Union
 from bleak import BleakScanner, BLEDevice
 from bleak.backends.device import BLEDevice as BLEDeviceType
 from src.config import Config
@@ -17,34 +20,54 @@ logger = logging.getLogger(__name__)
 class AirTagDetector:
     """Detects AirTags via Bluetooth LE and estimates distance"""
     
+    # Apple's company identifier for Bluetooth manufacturer data
+    APPLE_COMPANY_ID = 0x004C
+    
+    # Known AirTag service UUIDs and advertising data patterns
+    AIRTAG_SERVICE_UUIDS = {
+        "FD6F",  # Apple's offline finding service UUID
+        "FDAB",  # Apple's continuity service UUID
+    }
+    
+    # AirTag advertising data type identifiers
+    AIRTAG_DATA_TYPES = {
+        0x12,  # Offline finding advertising type
+        0x1E,  # Nearby action type
+    }
+    
     def __init__(self, 
-                 target_mac: str,
+                 airtag_identifier: str,
                  proximity_threshold_feet: float = 3.0,
                  scan_interval: float = 2.0):
         """
         Initialize AirTag detector
         
         Args:
-            target_mac: MAC address of the target AirTag
+            airtag_identifier: Unique identifier for your AirTag (not MAC address)
+                              This could be a partial serial number, name, or other identifier
             proximity_threshold_feet: Distance threshold in feet
             scan_interval: How often to scan in seconds
         """
-        self.target_mac = target_mac.upper().replace(':', '-')
+        self.airtag_identifier = airtag_identifier
         self.proximity_threshold_feet = proximity_threshold_feet
         self.scan_interval = scan_interval
         self.is_scanning = False
         self.last_detection_time = 0
         self.last_rssi = None
-        self.proximity_callback: Optional[Callable[[bool, float], None]] = None
+        self.proximity_callback: Optional[Callable[[bool, float], Awaitable[None]]] = None
+        
+        # Track known AirTag addresses (they change, but we can track recent ones)
+        self.known_airtag_addresses: Set[str] = set()
         
         # RSSI to distance conversion parameters
-        self.rssi_at_1m = Config.RSSI_AT_CALIBRATION_DISTANCE  # Typical RSSI at 1 meter
-        self.path_loss_exponent = Config.PATH_LOSS_EXPONENT  # Path loss exponent (2.0 for free space)
+        self.rssi_at_1m = Config.RSSI_AT_CALIBRATION_DISTANCE
+        self.path_loss_exponent = Config.PATH_LOSS_EXPONENT
         
-        logger.info(f"AirTag detector initialized for MAC: {self.target_mac}")
+        logger.info(f"AirTag detector initialized for identifier: {self.airtag_identifier}")
         logger.info(f"Proximity threshold: {self.proximity_threshold_feet} feet")
+        logger.warning("Note: AirTags use MAC randomization. Detection based on advertising data patterns.")
     
-    def set_proximity_callback(self, callback: Callable[[bool, float], None]):
+    def set_proximity_callback(self, callback: Callable[[bool, float], Awaitable[None]]):
         """Set callback function to be called when proximity status changes"""
         self.proximity_callback = callback
     
@@ -104,29 +127,71 @@ class AirTagDetector:
     
     def is_target_airtag(self, device: BLEDevice) -> bool:
         """
-        Check if a BLE device is our target AirTag
+        Check if a BLE device is likely an AirTag using advertising data patterns
         
         Args:
             device: BLE device to check
             
         Returns:
-            True if this is the target AirTag
+            True if this appears to be an AirTag
         """
-        # Check MAC address
-        if device.address.upper().replace(':', '-') == self.target_mac:
+        # First check if this is a known Apple device
+        if not self._is_apple_device(device):
+            return False
+        
+        # Check for AirTag-specific service UUIDs
+        if device.metadata and 'uuids' in device.metadata:
+            device_uuids = set(str(uuid).upper() for uuid in device.metadata['uuids'])
+            if device_uuids.intersection(self.AIRTAG_SERVICE_UUIDS):
+                logger.debug(f"Found AirTag by service UUID: {device.address}")
+                self.known_airtag_addresses.add(device.address)
+                return True
+        
+        # Check for AirTag-specific advertising data patterns
+        if self._has_airtag_advertising_data(device):
+            logger.debug(f"Found AirTag by advertising data: {device.address}")
+            self.known_airtag_addresses.add(device.address)
             return True
         
-        # Check if device appears to be an AirTag by name or manufacturer data
-        if device.name and 'airtag' in device.name.lower():
-            logger.info(f"Found AirTag by name: {device.name} ({device.address})")
-            return device.address.upper().replace(':', '-') == self.target_mac
+        # Check if this is a previously seen AirTag address
+        # (AirTags may not always advertise the same data)
+        if device.address in self.known_airtag_addresses:
+            logger.debug(f"Found known AirTag address: {device.address}")
+            return True
         
-        # Check manufacturer data for Apple (company ID 0x004C)
-        if device.metadata and 'manufacturer_data' in device.metadata:
-            manufacturer_data = device.metadata['manufacturer_data']
-            if 0x004C in manufacturer_data:  # Apple company ID
-                logger.debug(f"Found Apple device: {device.address}")
-                return device.address.upper().replace(':', '-') == self.target_mac
+        return False
+    
+    def _is_apple_device(self, device: BLEDevice) -> bool:
+        """Check if device is from Apple based on manufacturer data"""
+        if not device.metadata or 'manufacturer_data' not in device.metadata:
+            return False
+        
+        manufacturer_data = device.metadata['manufacturer_data']
+        return self.APPLE_COMPANY_ID in manufacturer_data
+    
+    def _has_airtag_advertising_data(self, device: BLEDevice) -> bool:
+        """
+        Check for AirTag-specific advertising data patterns
+        
+        AirTags advertise with specific data patterns that can help identify them
+        even when MAC addresses change.
+        """
+        if not device.metadata or 'manufacturer_data' not in device.metadata:
+            return False
+        
+        manufacturer_data = device.metadata['manufacturer_data']
+        apple_data = manufacturer_data.get(self.APPLE_COMPANY_ID)
+        
+        if not apple_data or len(apple_data) < 2:
+            return False
+        
+        # Check for AirTag advertising data type identifiers
+        data_type = apple_data[0]
+        if data_type in self.AIRTAG_DATA_TYPES:
+            return True
+        
+        # Additional pattern matching could be added here
+        # For example, checking specific byte patterns that AirTags use
         
         return False
     

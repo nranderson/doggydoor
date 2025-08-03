@@ -27,13 +27,13 @@ ssh pi@your-pi-ip
 cd doggydoor
 ./setup_pi.sh
 
-# 3. Find your AirTag MAC address
+# 3. Identify your AirTag
 source venv/bin/activate
 python tools/scan_airtags.py
 
 # 4. Configure the system
 cp .env.example .env
-nano .env  # Edit with your AirTag MAC and settings
+nano .env  # Edit with your AirTag identifier and settings
 
 # 5. Test the application
 python src/main.py
@@ -76,8 +76,8 @@ docker-compose up
 Copy `.env.example` to `.env` and configure:
 
 ```bash
-# Your AirTag's MAC address (find with scan_airtags.py)
-AIRTAG_MAC_ADDRESS=AA:BB:CC:DD:EE:FF
+# Your AirTag's identifier (configure to identify your specific AirTag)
+AIRTAG_IDENTIFIER=my-dog-airtag
 
 # Distance threshold in feet
 PROXIMITY_THRESHOLD_FEET=3.0
@@ -93,13 +93,13 @@ AUTO_UNLOCK_TIMEOUT_MINUTES=10
 
 ## 🔧 Setup Guide
 
-### 1. Find Your AirTag
+### 1. Identify Your AirTag
 
 ```bash
 python tools/scan_airtags.py
 ```
 
-This will scan for nearby Apple devices and help you identify your AirTag's MAC address.
+This will scan for nearby Apple devices and help you identify your AirTag.
 
 ### 2. Calibrate Distance (Optional)
 
@@ -160,7 +160,7 @@ tail -f /opt/doggydoor/logs/doggydoor.log
 
 - Ensure AirTag is nearby and active (shake it)
 - Check Bluetooth is enabled: `sudo systemctl status bluetooth`
-- Verify MAC address in configuration
+- Verify AirTag identifier in configuration
 - Run scan tool: `python tools/scan_airtags.py`
 
 ### HomeKit Issues
@@ -200,7 +200,7 @@ doggydoor/
 │   ├── homekit_controller.py # HomeKit integration
 │   └── config.py          # Configuration management
 ├── tools/                 # Utility scripts
-│   ├── scan_airtags.py    # Find AirTag MAC addresses
+│   ├── scan_airtags.py    # Detect and identify AirTags
 │   └── calibrate_distance.py # Distance calibration
 ├── Dockerfile             # Container definition
 ├── docker-compose.yml     # Multi-container setup

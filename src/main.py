@@ -67,7 +67,7 @@ class DoggyDoorApp:
         # Initialize AirTag detector
         logger.info("Initializing AirTag detector...")
         self.airtag_detector = AirTagDetector(
-            target_mac=Config.AIRTAG_MAC_ADDRESS,
+            airtag_identifier=Config.AIRTAG_IDENTIFIER,
             proximity_threshold_feet=Config.PROXIMITY_THRESHOLD_FEET,
             scan_interval=Config.SCAN_INTERVAL_SECONDS
         )
