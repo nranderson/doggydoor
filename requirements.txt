@@ -1,4 +1,11 @@
-# Example requirements - add your actual dependencies here
-# requests==2.31.0
-# flask==2.3.3
-# numpy==1.24.3
+# Core dependencies for AirTag detection and HomeKit control
+bleak==0.21.1              # Bluetooth Low Energy library for AirTag detection
+pyhap==4.7.1               # HomeKit Accessory Protocol (HAP-python)
+cryptography==41.0.7       # Required for HAP encryption
+requests==2.31.0           # For HTTP API calls
+python-dotenv==1.0.0       # Environment variable management
+asyncio-mqtt==0.16.1       # For MQTT communication (optional)
+zeroconf==0.115.2          # mDNS/Bonjour for HomeKit discovery
+schedule==1.2.0            # Task scheduling
+logging==0.4.9.6           # Enhanced logging
+pytz==2023.3               # Timezone handling

@@ -4,14 +4,20 @@ FROM python:3.11-alpine
 # Set working directory
 WORKDIR /app
 
-# Install essential system dependencies for Python packages
+# Install essential system dependencies for Python packages and Bluetooth
 # - build-base: Contains gcc, make, and other build tools
 # - libffi-dev: For packages that need FFI
 # - openssl-dev: For SSL/TLS support
+# - bluez-dev: Bluetooth development libraries
+# - dbus-dev: D-Bus development libraries (needed for Bluetooth)
+# - linux-headers: Linux kernel headers
 RUN apk add --no-cache \
     build-base \
     libffi-dev \
     openssl-dev \
+    bluez-dev \
+    dbus-dev \
+    linux-headers \
     && rm -rf /var/cache/apk/*
 
 # Upgrade pip to the latest version

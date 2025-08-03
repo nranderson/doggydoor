@@ -5,14 +5,22 @@ services:
     build: .
     image: doggydoor:latest
     container_name: doggydoor-app
-    # Override the default command to run our demo app
-    command: python app.py
+    # Run the main doggy door application
+    command: python src/main.py
     # Mount the current directory for development
     volumes:
       - .:/app
+      - ./data:/app/data
+      - ./logs:/app/logs
     # Environment variables
     environment:
       - PYTHONUNBUFFERED=1
-    # Network configuration (if needed)
-    # ports:
-    #   - "8000:8000"
+    # Network configuration for HomeKit
+    network_mode: host
+    # Privileged mode for Bluetooth access
+    privileged: true
+    # Device access for Bluetooth
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    # Restart policy
+    restart: unless-stopped
