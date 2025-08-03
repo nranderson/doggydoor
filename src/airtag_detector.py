@@ -36,19 +36,15 @@ class AirTagDetector:
     }
     
     def __init__(self, 
-                 airtag_identifier: str,
                  proximity_threshold_feet: float = 3.0,
                  scan_interval: float = 2.0):
         """
-        Initialize AirTag detector
+        Initialize AirTag detector to detect ANY Apple AirTag
         
         Args:
-            airtag_identifier: Unique identifier for your AirTag (not MAC address)
-                              This could be a partial serial number, name, or other identifier
             proximity_threshold_feet: Distance threshold in feet
             scan_interval: How often to scan in seconds
         """
-        self.airtag_identifier = airtag_identifier
         self.proximity_threshold_feet = proximity_threshold_feet
         self.scan_interval = scan_interval
         self.is_scanning = False
@@ -63,7 +59,7 @@ class AirTagDetector:
         self.rssi_at_1m = Config.RSSI_AT_CALIBRATION_DISTANCE
         self.path_loss_exponent = Config.PATH_LOSS_EXPONENT
         
-        logger.info(f"AirTag detector initialized for identifier: {self.airtag_identifier}")
+        logger.info("AirTag detector initialized to detect ANY Apple AirTag")
         logger.info(f"Proximity threshold: {self.proximity_threshold_feet} feet")
         logger.warning("Note: AirTags use MAC randomization. Detection based on advertising data patterns.")
     
@@ -97,35 +93,46 @@ class AirTagDetector:
     
     async def scan_for_airtag(self) -> Optional[tuple[BLEDevice, float]]:
         """
-        Scan for the target AirTag
+        Scan for ANY AirTag and return the closest one
         
         Returns:
             Tuple of (device, distance_feet) if found, None otherwise
         """
         try:
-            logger.debug("Scanning for AirTags...")
+            logger.debug("Scanning for any AirTags...")
             
             # Scan for BLE devices
             devices = await BleakScanner.discover(timeout=self.scan_interval)
             
-            for device in devices:
-                # Check if this is our target AirTag
-                if self.is_target_airtag(device):
-                    distance_feet = self.rssi_to_distance_feet(device.rssi)
-                    self.last_detection_time = time.time()
-                    self.last_rssi = device.rssi
-                    
-                    logger.debug(f"Found target AirTag: RSSI={device.rssi}, Distance={distance_feet:.2f}ft")
-                    return device, distance_feet
+            closest_airtag = None
+            closest_distance = float('inf')
             
-            logger.debug("Target AirTag not found in scan")
+            for device in devices:
+                # Check if this is an AirTag
+                if self.is_any_airtag(device):
+                    distance_feet = self.rssi_to_distance_feet(device.rssi)
+                    
+                    # Keep track of the closest one
+                    if distance_feet < closest_distance:
+                        closest_airtag = device
+                        closest_distance = distance_feet
+                    
+                    logger.debug(f"Found AirTag: RSSI={device.rssi}, Distance={distance_feet:.2f}ft")
+            
+            if closest_airtag:
+                self.last_detection_time = time.time()
+                self.last_rssi = closest_airtag.rssi
+                logger.debug(f"Closest AirTag: RSSI={closest_airtag.rssi}, Distance={closest_distance:.2f}ft")
+                return closest_airtag, closest_distance
+            
+            logger.debug("No AirTags found in scan")
             return None
             
         except Exception as e:
             logger.error(f"Error during BLE scan: {e}")
             return None
     
-    def is_target_airtag(self, device: BLEDevice) -> bool:
+    def is_any_airtag(self, device: BLEDevice) -> bool:
         """
         Check if a BLE device is likely an AirTag using advertising data patterns
         

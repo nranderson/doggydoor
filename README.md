@@ -1,12 +1,12 @@
 # 🐕 Doggy Door AirTag Detection System
 
-An intelligent doggy door system that uses Apple AirTag detection to automatically control access. When your dog (wearing an AirTag) approaches within 3 feet, the system unlocks the door via HomeKit. When they move away, it locks again.
+An intelligent doggy door system that detects **ANY** Apple AirTag within 3 feet to automatically control access. Perfect for families with multiple AirTags - no configuration needed, just works with any AirTag that comes close!
 
-Perfect for Raspberry Pi deployment with Docker support.
+**🐳 Docker-First Design** - Just run one setup script and you're ready to go! No Python environment setup required.
 
 ## ✨ Features
 
-- 🎯 **AirTag Detection** - Bluetooth LE scanning to detect nearby AirTags
+- 🎯 **Universal AirTag Detection** - Works with ANY Apple AirTag, no setup required
 - 📏 **Distance Estimation** - RSSI-based distance calculation in feet
 - 🏠 **HomeKit Integration** - Control any HomeKit-compatible switch/lock
 - 🔒 **Safety First** - Fail-safe mode and auto-lock timeout
@@ -22,25 +22,27 @@ Perfect for Raspberry Pi deployment with Docker support.
 # 1. Copy to your Raspberry Pi
 scp -r . pi@your-pi-ip:/home/pi/doggydoor
 
-# 2. SSH to Pi and run setup
+# 2. SSH to Pi and run setup (installs Docker)
 ssh pi@your-pi-ip
 cd doggydoor
 ./setup_pi.sh
 
-# 3. Identify your AirTag
-source venv/bin/activate
-python tools/scan_airtags.py
+# 3. Log out and back in to activate Docker permissions
+exit
+ssh pi@your-pi-ip
+cd doggydoor
 
 # 4. Configure the system
 cp .env.example .env
-nano .env  # Edit with your AirTag identifier and settings
+nano .env  # Adjust HomeKit settings if needed
 
-# 5. Test the application
-python src/main.py
+# 5. Build and run with Docker
+./build.sh
+docker-compose up -d
 
-# 6. Install as system service
-sudo systemctl start doggydoor
-sudo systemctl enable doggydoor
+# 6. Check status and logs
+docker-compose ps
+docker-compose logs -f
 ```
 
 ### For Development/Testing
@@ -49,7 +51,7 @@ sudo systemctl enable doggydoor
 # Build the Docker image
 ./build.sh
 
-# Scan for AirTags
+# Test AirTag detection
 docker run --rm --privileged doggydoor:latest python tools/scan_airtags.py
 
 # Run with Docker Compose
@@ -62,23 +64,21 @@ docker-compose up
 
 - Raspberry Pi 3B+ or newer (recommended)
 - Bluetooth adapter (built-in Pi Bluetooth works)
-- AirTag attached to your dog's collar
+- AirTag (any Apple AirTag will work)
 - HomeKit-compatible smart switch/lock
 
 ### Software Requirements
 
 - Raspberry Pi OS (Bullseye or newer)
-- Docker and Docker Compose (for containerized deployment)
-- Python 3.9+ (for native deployment)
+- Docker (automatically installed by setup script)
+- That's it! No Python setup needed - everything runs in Docker
 
 ## ⚙️ Configuration
 
 Copy `.env.example` to `.env` and configure:
 
 ```bash
-# Your AirTag's identifier (configure to identify your specific AirTag)
-AIRTAG_IDENTIFIER=my-dog-airtag
-
+# Detection mode: ANY Apple AirTag (no configuration needed!)
 # Distance threshold in feet
 PROXIMITY_THRESHOLD_FEET=3.0
 
@@ -93,21 +93,23 @@ AUTO_UNLOCK_TIMEOUT_MINUTES=10
 
 ## 🔧 Setup Guide
 
-### 1. Identify Your AirTag
+### 1. Test AirTag Detection (Optional)
 
 ```bash
-python tools/scan_airtags.py
+# Test AirTag detection using Docker
+docker run --rm --privileged doggydoor:latest python tools/scan_airtags.py
 ```
 
-This will scan for nearby Apple devices and help you identify your AirTag.
+This will scan for nearby Apple devices and confirm the system can detect AirTags.
 
 ### 2. Calibrate Distance (Optional)
 
 ```bash
-python tools/calibrate_distance.py
+# Calibrate distance estimation using Docker
+docker run --rm --privileged -it doggydoor:latest python tools/calibrate_distance.py
 ```
 
-Place your AirTag at a known distance and run this tool to improve distance accuracy.
+Place an AirTag at a known distance and run this tool to improve distance accuracy.
 
 ### 3. HomeKit Configuration
 
@@ -138,21 +140,21 @@ Place your AirTag at a known distance and run this tool to improve distance accu
 ### Check System Status
 
 ```bash
-# Service status
-sudo systemctl status doggydoor
+# Container status
+docker-compose ps
 
 # Live logs
-sudo journalctl -u doggydoor -f
+docker-compose logs -f
 
-# Application logs
-tail -f /opt/doggydoor/logs/doggydoor.log
+# System resources
+docker stats doggydoor_app_1
 ```
 
 ### Log Files
 
-- System logs: `journalctl -u doggydoor`
-- Application logs: `/opt/doggydoor/logs/doggydoor.log`
+- Container logs: `docker-compose logs`
 - Bluetooth debugging: `sudo systemctl status bluetooth`
+- Docker system: `docker system df`
 
 ## 🛠️ Troubleshooting
 
@@ -160,26 +162,33 @@ tail -f /opt/doggydoor/logs/doggydoor.log
 
 - Ensure AirTag is nearby and active (shake it)
 - Check Bluetooth is enabled: `sudo systemctl status bluetooth`
-- Verify AirTag identifier in configuration
-- Run scan tool: `python tools/scan_airtags.py`
+- Test AirTag detection: `docker run --rm --privileged doggydoor:latest python tools/scan_airtags.py`
+- Verify container has Bluetooth access
+
+### Docker Issues
+
+- Check container is running: `docker-compose ps`
+- Restart container: `docker-compose restart`
+- Rebuild image: `./build.sh && docker-compose up -d`
+- Check container privileges: Container must run with `--privileged` for Bluetooth
 
 ### HomeKit Issues
 
 - Check network connectivity
-- Verify HomeKit credentials/PIN
+- Verify HomeKit credentials/PIN in `.env`
 - Test HomeKit switch manually in Home app
 - Check firewall settings (port 51827 for HAP)
 
 ### Permission Errors
 
-- Ensure user is in `bluetooth` group: `groups $USER`
-- Check container has `--privileged` flag
-- Verify `/dev/bus/usb` access for Docker
+- Ensure user is in `docker` group: `groups $USER`
+- Check container has `--privileged` flag (set in docker-compose.yml)
+- Verify Bluetooth access: `sudo systemctl status bluetooth`
 
 ### Distance Accuracy
 
-- Run calibration tool: `python tools/calibrate_distance.py`
-- Adjust `RSSI_AT_CALIBRATION_DISTANCE` in config
+- Run calibration: `docker run --rm --privileged -it doggydoor:latest python tools/calibrate_distance.py`
+- Adjust `RSSI_AT_CALIBRATION_DISTANCE` in `.env`
 - Consider environmental factors (walls, interference)
 
 ## 🔒 Security Considerations
@@ -216,69 +225,8 @@ doggydoor/
 3. Test on Raspberry Pi hardware
 4. Submit a pull request
 
-## 📄 License
-
-MIT License - see LICENSE file for details
-
 ## 🐾 Credits
 
 Made with ❤️ for dogs who deserve smart doors!
 
-### Adding Dependencies
-
-1. Edit `requirements.txt` to add your Python packages
-2. Rebuild the image: `./build.sh`
-
-### Modifying the Base Image
-
-The Dockerfile uses `python:3.11-alpine` for the smallest footprint. You can modify this to:
-
-- `python:3.11-slim` - Debian-based, larger but more compatible
-- `python:3.12-alpine` - Latest Python version
-- `python:3.11-alpine3.18` - Specific Alpine version
-
-### Security
-
-The image runs as a non-root user (`appuser`) with UID/GID 1000 for enhanced security.
-
-## Development
-
-### Project Structure
-
-```
-.
-├── Dockerfile          # Multi-stage Docker build
-├── .dockerignore      # Files to exclude from build context
-├── requirements.txt   # Python dependencies
-├── app.py            # Demo Python application
-├── docker-compose.yml # Container orchestration
-├── build.sh          # Build and test script
-└── README.md         # This file
-```
-
-### Best Practices
-
-1. **Layer caching**: Requirements are installed before copying application code
-2. **Security**: Non-root user execution
-3. **Size optimization**: Alpine base with minimal dependencies
-4. **Build efficiency**: .dockerignore excludes unnecessary files
-
-## Troubleshooting
-
-### Build fails with package compilation errors
-
-Some Python packages need additional Alpine packages. Add them to the Dockerfile:
-
-```dockerfile
-RUN apk add --no-cache \
-    build-base \
-    libffi-dev \
-    openssl-dev \
-    postgresql-dev \  # For psycopg2
-    jpeg-dev \        # For Pillow
-    zlib-dev          # For various packages
-```
-
-### Permission errors
-
-Ensure your application doesn't require root privileges. The container runs as user `appuser` (UID 1000).
+**License:** MIT License - see LICENSE file for details

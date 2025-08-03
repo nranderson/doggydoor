@@ -13,7 +13,7 @@ class Config:
     """Configuration class for the doggy door system"""
     
     # AirTag Detection Settings
-    AIRTAG_IDENTIFIER: str = os.getenv('AIRTAG_IDENTIFIER', '')
+    # Note: No identifier needed - detects ANY Apple AirTag within range
     PROXIMITY_THRESHOLD_FEET: float = float(os.getenv('PROXIMITY_THRESHOLD_FEET', '3.0'))
     SCAN_INTERVAL_SECONDS: int = int(os.getenv('SCAN_INTERVAL_SECONDS', '2'))
     RSSI_CALIBRATION_DISTANCE_FEET: float = float(os.getenv('RSSI_CALIBRATION_DISTANCE_FEET', '3.28'))  # 1 meter
@@ -47,9 +47,6 @@ class Config:
         """Validate configuration and return list of errors"""
         errors = []
         
-        if not cls.AIRTAG_IDENTIFIER:
-            errors.append("AIRTAG_IDENTIFIER is required")
-            
         if cls.PROXIMITY_THRESHOLD_FEET <= 0:
             errors.append("PROXIMITY_THRESHOLD_FEET must be positive")
             
@@ -65,7 +62,7 @@ class Config:
     def print_config(cls):
         """Print current configuration (excluding sensitive data)"""
         print("=== Doggy Door Configuration ===")
-        print(f"AirTag Identifier: {cls.AIRTAG_IDENTIFIER}")
+        print("Detection Mode: ANY Apple AirTag")
         print(f"Proximity Threshold: {cls.PROXIMITY_THRESHOLD_FEET} feet")
         print(f"Scan Interval: {cls.SCAN_INTERVAL_SECONDS} seconds")
         print(f"HomeKit Bridge: {cls.HOMEKIT_BRIDGE_NAME}")

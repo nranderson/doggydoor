@@ -29,7 +29,46 @@ sudo apt install -y \
     git \
     curl \
     avahi-daemon \
-    libavahi-compat-libdnssd-dev
+    libavahi-compat-libdnssd-dev \
+    ca-certificates \
+    gnupg \
+    lsb-release
+
+# Install Docker
+echo "🐳 Installing Docker..."
+if ! command -v docker &> /dev/null; then
+    # Add Docker's official GPG key
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    
+    # Set up the repository
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    # Update package index
+    sudo apt update
+    
+    # Install Docker Engine
+    sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    
+    # Add user to docker group
+    sudo usermod -a -G docker $USER
+    
+    echo "✅ Docker installed successfully"
+else
+    echo "ℹ️ Docker is already installed"
+fi
+
+# Install Docker Compose (standalone)
+echo "🐙 Installing Docker Compose..."
+if ! command -v docker-compose &> /dev/null; then
+    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    echo "✅ Docker Compose installed successfully"
+else
+    echo "ℹ️ Docker Compose is already installed"
+fi
 
 # Enable Bluetooth service
 echo "📡 Enabling Bluetooth service..."
@@ -75,7 +114,8 @@ pip install -r requirements.txt
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "⚙️ Creating configuration file..."
     cp .env.example .env
-    echo "📝 Please edit $APP_DIR/.env with your AirTag MAC address and settings"
+    echo "📝 Please edit $APP_DIR/.env with your HomeKit and system settings"
+    echo "ℹ️ AirTag detection is automatic - no specific AirTag configuration needed!"
 fi
 
 # Create systemd service file
@@ -114,20 +154,32 @@ sudo systemctl enable doggydoor
 echo ""
 echo "✅ Setup complete!"
 echo ""
+echo "🔄 Please log out and back in (or run 'newgrp docker') to use Docker without sudo"
+echo ""
 echo "Next steps:"
 echo "1. Edit configuration: nano $APP_DIR/.env"
-echo "2. Find your AirTag MAC: python tools/scan_airtags.py"
-echo "3. Calibrate distance: python tools/calibrate_distance.py"
-echo "4. Test the application: python src/main.py"
-echo "5. Start the service: sudo systemctl start doggydoor"
-echo "6. Check status: sudo systemctl status doggydoor"
-echo "7. View logs: sudo journalctl -u doggydoor -f"
+echo "2. Test AirTag detection: python tools/scan_airtags.py"
+echo "3. Calibrate distance (optional): python tools/calibrate_distance.py"
 echo ""
-echo "🔍 To find your AirTag MAC address:"
+echo "🐍 Option A - Run with Python (native):"
+echo "   4a. Test the application: python src/main.py"
+echo "   5a. Start the service: sudo systemctl start doggydoor"
+echo "   6a. Check status: sudo systemctl status doggydoor"
+echo "   7a. View logs: sudo journalctl -u doggydoor -f"
+echo ""
+echo "� Option B - Run with Docker (recommended):"
+echo "   4b. Build Docker image: ./build.sh"
+echo "   5b. Run with Docker Compose: docker-compose up -d"
+echo "   6b. Check status: docker-compose ps"
+echo "   7b. View logs: docker-compose logs -f"
+echo ""
+echo "🔍 To find and test AirTags:"
 echo "   cd $APP_DIR && source venv/bin/activate && python tools/scan_airtags.py"
 echo ""
-echo "⚡ Quick start (after configuration):"
-echo "   sudo systemctl start doggydoor"
+echo "⚡ Quick start options:"
+echo "   Native Python: sudo systemctl start doggydoor"
+echo "   Docker:        docker-compose up -d"
 echo ""
-echo "🛑 To stop the service:"
-echo "   sudo systemctl stop doggydoor"
+echo "🛑 To stop:"
+echo "   Native Python: sudo systemctl stop doggydoor"
+echo "   Docker:        docker-compose down"
