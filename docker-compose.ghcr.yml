@@ -1,0 +1,34 @@
+version: "3.8"
+
+# Alternative docker-compose configuration that uses pre-built images from GitHub Container Registry
+# To use this instead of building locally:
+# 1. Rename this file to docker-compose.yml
+# 2. Rename the original docker-compose.yml to docker-compose.local.yml
+# 3. Run: docker-compose pull && docker-compose up -d
+
+services:
+  doggydoor:
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/nranderson/doggydoor:latest
+    container_name: doggydoor-app
+    # Run the main doggy door application
+    command: python src/main.py
+    # Mount only necessary directories
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro # Mount .env file as read-only
+    # Environment variables
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    # Network configuration for HomeKit
+    network_mode: host
+    # Privileged mode for Bluetooth access
+    privileged: true
+    # Device access for Bluetooth
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    # Restart policy
+    restart: unless-stopped

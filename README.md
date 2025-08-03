@@ -18,6 +18,8 @@ An intelligent doggy door system that detects **ANY** Apple AirTag within 3 feet
 
 ### For Raspberry Pi (Recommended)
 
+**Option A: Use Pre-built Image (Easiest)**
+
 ```bash
 # 1. Copy to your Raspberry Pi
 scp -r . pi@your-pi-ip:/home/pi/doggydoor
@@ -35,6 +37,21 @@ cd doggydoor
 # 4. Configure the system
 cp .env.example .env
 nano .env  # Adjust HomeKit settings if needed
+
+# 5. Use pre-built image from GitHub Container Registry
+cp docker-compose.ghcr.yml docker-compose.yml
+docker-compose pull
+docker-compose up -d
+
+# 6. Check status and logs
+docker-compose ps
+docker-compose logs -f
+```
+
+**Option B: Build Locally**
+
+```bash
+# Follow steps 1-4 above, then:
 
 # 5. Build and run with Docker
 ./build.sh
@@ -161,6 +178,35 @@ docker inspect doggydoor-app --format='{{.RestartCount}} restarts, uptime: {{.St
 - Bluetooth debugging: `sudo systemctl status bluetooth`
 - Docker system: `docker system df`
 
+## 🏭 Automated Builds
+
+### GitHub Container Registry
+
+Pre-built Docker images are automatically published to GitHub Container Registry:
+
+- **Registry:** `ghcr.io/nranderson/doggydoor`
+- **Latest tag:** `ghcr.io/nranderson/doggydoor:latest`
+- **Automated builds:** Daily at 2 AM UTC + on every commit to main
+- **Multi-architecture:** Supports both AMD64 and ARM64 (Raspberry Pi)
+
+### Using Pre-built Images
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/nranderson/doggydoor:latest
+
+# Use the GHCR compose file
+cp docker-compose.ghcr.yml docker-compose.yml
+docker-compose up -d
+```
+
+### Build Schedule
+
+- **On commits:** Automatic build when code is pushed to main branch
+- **Daily builds:** Every day at 2 AM UTC to include base image updates
+- **Manual trigger:** Can be triggered manually from GitHub Actions
+- **PR builds:** Test builds on pull requests (not published)`
+
 ## 🛠️ Troubleshooting
 
 ### AirTag Not Detected
@@ -227,19 +273,23 @@ The container is configured with `restart: unless-stopped` which means:
 
 ```
 doggydoor/
-├── src/                    # Main application code
-│   ├── main.py            # Application entry point
-│   ├── airtag_detector.py # Bluetooth LE AirTag detection
+├── .github/
+│   └── workflows/
+│       └── docker-build.yml   # Automated Docker builds
+├── src/                       # Main application code
+│   ├── main.py               # Application entry point
+│   ├── airtag_detector.py    # Bluetooth LE AirTag detection
 │   ├── homekit_controller.py # HomeKit integration
-│   └── config.py          # Configuration management
-├── tools/                 # Utility scripts
-│   ├── scan_airtags.py    # Detect and identify AirTags
+│   └── config.py             # Configuration management
+├── tools/                    # Utility scripts
+│   ├── scan_airtags.py       # Detect and identify AirTags
 │   └── calibrate_distance.py # Distance calibration
-├── Dockerfile             # Container definition
-├── docker-compose.yml     # Multi-container setup
-├── setup_pi.sh           # Raspberry Pi setup script
-├── .env.example          # Configuration template
-└── requirements.txt      # Python dependencies
+├── Dockerfile                # Container definition
+├── docker-compose.yml        # Local development setup
+├── docker-compose.ghcr.yml   # Pre-built image setup
+├── setup_pi.sh              # Raspberry Pi setup script
+├── .env.example             # Configuration template
+└── requirements.txt         # Python dependencies
 ```
 
 ## 🤝 Contributing

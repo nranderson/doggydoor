@@ -8,13 +8,15 @@ echo "🐕 Doggy Door Setup Script"
 echo "=========================="
 
 # Check if running on Raspberry echo "🐳 Option B - Run with Docker (recommended):"
-echo "   4b. Build Docker image: ./build.sh"
+echo "   4b1. Use pre-built image (fastest): cp docker-compose.ghcr.yml docker-compose.yml"
+echo "   4b2. OR build locally: ./build.sh"
 echo "   5b. Run with Docker Compose: docker-compose up -d"
 echo "   6b. Check status: docker-compose ps"
 echo "   7b. View logs: docker-compose logs -f"
 echo ""
 echo "💡 Docker automatically loads configuration from .env file"
-echo "🔄 Container will auto-restart on failures and system reboots" ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
+echo "🔄 Container will auto-restart on failures and system reboots"
+echo "🏭 Pre-built images available at ghcr.io/nranderson/doggydoor" ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
     echo "⚠️ Warning: This doesn't appear to be a Raspberry Pi"
     echo "Some features may not work correctly."
 fi
