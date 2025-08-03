@@ -91,6 +91,8 @@ FAIL_SAFE_MODE=true
 AUTO_UNLOCK_TIMEOUT_MINUTES=10
 ```
 
+**Note:** The `.env` file is automatically loaded into the Docker container when you run `docker-compose up`. No additional configuration needed!
+
 ## 🔧 Setup Guide
 
 ### 1. Test AirTag Detection (Optional)
@@ -171,6 +173,14 @@ docker stats doggydoor_app_1
 - Restart container: `docker-compose restart`
 - Rebuild image: `./build.sh && docker-compose up -d`
 - Check container privileges: Container must run with `--privileged` for Bluetooth
+- Verify .env file exists: `ls -la .env` (must be present for configuration)
+
+### Configuration Issues
+
+- Ensure `.env` file exists in the same directory as `docker-compose.yml`
+- Check environment variables are loaded: `docker-compose config` (shows resolved config)
+- Verify .env format: No spaces around `=`, no quotes unless needed
+- Test configuration: `docker run --rm --env-file .env doggydoor:latest python -c "from src.config import Config; Config.print_config()"`
 
 ### HomeKit Issues
 
