@@ -46,5 +46,8 @@ COPY --chown=appuser:appuser . .
 # Set the PATH to include user-installed packages
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 
+# Set PYTHONPATH to include the app directory so 'src' module can be found
+ENV PYTHONPATH="/app:${PYTHONPATH}"
+
 # Default command - can be overridden
 CMD ["python", "--version"]
