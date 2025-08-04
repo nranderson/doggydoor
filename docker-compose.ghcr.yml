@@ -1,6 +1,4 @@
-+
-
-\]rsion: "3.8"
+version: "3.8"
 
 # Docker Compose configuration with automatic updates via Watchtower
 # This setup uses pre-built images from GitHub Container Registry
@@ -17,8 +15,8 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./.env:/app/.env:ro  # Mount .env file as read-only
-      - /var/run/dbus:/var/run/dbus  # D-Bus for Bluetooth communication
+      - ./.env:/app/.env:ro # Mount .env file as read-only
+      - /var/run/dbus:/var/run/dbus # D-Bus for Bluetooth communication
     # Environment variables
     env_file:
       - .env
