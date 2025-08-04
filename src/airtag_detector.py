@@ -101,28 +101,35 @@ class AirTagDetector:
         try:
             logger.debug("Scanning for any AirTags...")
             
-            # Scan for BLE devices
-            devices = await BleakScanner.discover(timeout=self.scan_interval)
-            
             closest_airtag = None
             closest_distance = float('inf')
             
-            for device in devices:
+            def device_found(device, advertisement_data):
+                nonlocal closest_airtag, closest_distance
+                
                 # Check if this is an AirTag
-                if self.is_any_airtag(device):
-                    distance_feet = self.rssi_to_distance_feet(device.rssi)
+                if self.is_any_airtag(device, advertisement_data):
+                    distance_feet = self.rssi_to_distance_feet(advertisement_data.rssi)
                     
                     # Keep track of the closest one
                     if distance_feet < closest_distance:
                         closest_airtag = device
                         closest_distance = distance_feet
                     
-                    logger.debug(f"Found AirTag: RSSI={device.rssi}, Distance={distance_feet:.2f}ft")
+                    logger.debug(f"Found AirTag: RSSI={advertisement_data.rssi}, Distance={distance_feet:.2f}ft")
+            
+            # Use callback-based scanning
+            scanner = BleakScanner(device_found)
+            await scanner.start()
+            await asyncio.sleep(self.scan_interval)
+            await scanner.stop()
             
             if closest_airtag:
                 self.last_detection_time = time.time()
-                self.last_rssi = closest_airtag.rssi
-                logger.debug(f"Closest AirTag: RSSI={closest_airtag.rssi}, Distance={closest_distance:.2f}ft")
+                # Get RSSI from the last advertisement data (stored in closest_distance calculation)
+                rssi = self.rssi_to_distance_feet_inverse(closest_distance)
+                self.last_rssi = rssi
+                logger.debug(f"Closest AirTag: Distance={closest_distance:.2f}ft")
                 return closest_airtag, closest_distance
             
             logger.debug("No AirTags found in scan")
@@ -132,30 +139,37 @@ class AirTagDetector:
             logger.error(f"Error during BLE scan: {e}")
             return None
     
-    def is_any_airtag(self, device: BLEDevice) -> bool:
+    def rssi_to_distance_feet_inverse(self, distance_feet: float) -> int:
+        """Convert distance back to RSSI (for logging purposes)"""
+        distance_meters = distance_feet / 3.28084
+        rssi = self.rssi_at_1m - (10 * self.path_loss_exponent * math.log10(distance_meters))
+        return int(rssi)
+
+    def is_any_airtag(self, device: BLEDevice, advertisement_data) -> bool:
         """
         Check if a BLE device is likely an AirTag using advertising data patterns
         
         Args:
             device: BLE device to check
+            advertisement_data: Advertisement data from the device
             
         Returns:
             True if this appears to be an AirTag
         """
         # First check if this is a known Apple device
-        if not self._is_apple_device(device):
+        if not self._is_apple_device(device, advertisement_data):
             return False
         
         # Check for AirTag-specific service UUIDs
-        if device.metadata and 'uuids' in device.metadata:
-            device_uuids = set(str(uuid).upper() for uuid in device.metadata['uuids'])
+        if advertisement_data.service_uuids:
+            device_uuids = set(str(uuid).upper() for uuid in advertisement_data.service_uuids)
             if device_uuids.intersection(self.AIRTAG_SERVICE_UUIDS):
                 logger.debug(f"Found AirTag by service UUID: {device.address}")
                 self.known_airtag_addresses.add(device.address)
                 return True
         
         # Check for AirTag-specific advertising data patterns
-        if self._has_airtag_advertising_data(device):
+        if self._has_airtag_advertising_data(device, advertisement_data):
             logger.debug(f"Found AirTag by advertising data: {device.address}")
             self.known_airtag_addresses.add(device.address)
             return True
@@ -168,26 +182,24 @@ class AirTagDetector:
         
         return False
     
-    def _is_apple_device(self, device: BLEDevice) -> bool:
+    def _is_apple_device(self, device: BLEDevice, advertisement_data) -> bool:
         """Check if device is from Apple based on manufacturer data"""
-        if not device.metadata or 'manufacturer_data' not in device.metadata:
+        if not advertisement_data.manufacturer_data:
             return False
         
-        manufacturer_data = device.metadata['manufacturer_data']
-        return self.APPLE_COMPANY_ID in manufacturer_data
+        return self.APPLE_COMPANY_ID in advertisement_data.manufacturer_data
     
-    def _has_airtag_advertising_data(self, device: BLEDevice) -> bool:
+    def _has_airtag_advertising_data(self, device: BLEDevice, advertisement_data) -> bool:
         """
         Check for AirTag-specific advertising data patterns
         
         AirTags advertise with specific data patterns that can help identify them
         even when MAC addresses change.
         """
-        if not device.metadata or 'manufacturer_data' not in device.metadata:
+        if not advertisement_data.manufacturer_data:
             return False
         
-        manufacturer_data = device.metadata['manufacturer_data']
-        apple_data = manufacturer_data.get(self.APPLE_COMPANY_ID)
+        apple_data = advertisement_data.manufacturer_data.get(self.APPLE_COMPANY_ID)
         
         if not apple_data or len(apple_data) < 2:
             return False

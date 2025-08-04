@@ -11,18 +11,17 @@ from bleak import BleakScanner
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def is_apple_device(device):
+def is_apple_device(device, advertisement_data):
     """Check if device has Apple manufacturer data"""
-    if not device.metadata or 'manufacturer_data' not in device.metadata:
+    if not advertisement_data or not advertisement_data.manufacturer_data:
         return False
-    manufacturer_data = device.metadata['manufacturer_data']
-    return 0x004C in manufacturer_data
+    return 0x004C in advertisement_data.manufacturer_data
 
-def has_airtag_services(device):
+def has_airtag_services(device, advertisement_data):
     """Check if device has AirTag service UUIDs"""
-    if not device.metadata or 'service_uuids' not in device.metadata:
+    if not advertisement_data or not advertisement_data.service_uuids:
         return False
-    service_uuids = device.metadata['service_uuids']
+    service_uuids = advertisement_data.service_uuids
     airtag_uuids = ['FD6F', 'FDAB']
     for uuid in service_uuids:
         if any(airtag_uuid.lower() in str(uuid).lower() for airtag_uuid in airtag_uuids):
@@ -33,16 +32,16 @@ def has_airtag_name(device):
     """Check if device name suggests it's an AirTag"""
     return device.name and 'airtag' in device.name.lower()
 
-def classify_device(device):
+def classify_device(device, advertisement_data):
     """Classify a BLE device as AirTag or other Apple device"""
-    is_apple = is_apple_device(device)
-    has_services = has_airtag_services(device)
+    is_apple = is_apple_device(device, advertisement_data)
+    has_services = has_airtag_services(device, advertisement_data)
     has_name = has_airtag_name(device)
     
     device_info = {
         'address': device.address,
         'name': device.name or 'Unknown',
-        'rssi': device.rssi,
+        'rssi': advertisement_data.rssi,
         'is_apple': is_apple,
         'is_airtag_name': has_name,
         'has_airtag_service': has_services
@@ -90,25 +89,33 @@ async def scan_for_airtags():
     print("=" * 50)
     
     try:
-        devices = await BleakScanner.discover(timeout=10.0)
-        
+        # Use detection callback approach for newer Bleak API
         apple_devices = []
         possible_airtags = []
         
-        for device in devices:
-            is_apple = is_apple_device(device)
+        def device_found(device, advertisement_data):
+            is_apple = is_apple_device(device, advertisement_data)
             has_name = has_airtag_name(device)
-            has_services = has_airtag_services(device)
+            has_services = has_airtag_services(device, advertisement_data)
             
             if is_apple or has_name or has_services:
-                device_info, is_likely_airtag = classify_device(device)
+                device_info, is_likely_airtag = classify_device(device, advertisement_data)
                 
                 if is_likely_airtag:
                     possible_airtags.append(device_info)
                 else:
                     apple_devices.append(device_info)
         
-        print_results(possible_airtags, apple_devices, len(devices))
+        # Scan with callback
+        scanner = BleakScanner(device_found)
+        await scanner.start()
+        await asyncio.sleep(10.0)  # Scan for 10 seconds
+        await scanner.stop()
+        
+        # Get total device count from scanner
+        total_devices = len(apple_devices) + len(possible_airtags)
+        
+        print_results(possible_airtags, apple_devices, total_devices)
         
     except Exception as e:
         logger.error(f"Error during scan: {e}")
