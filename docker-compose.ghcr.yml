@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Docker Compose configuration with automatic updates via Watchtower
 # This setup uses pre-built images from GitHub Container Registry
 # Watchtower automatically checks for new images every 6 hours and updates containers
@@ -58,6 +56,4 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       # Optional: mount timezone
       - /etc/localtime:/etc/localtime:ro
-    # Run Watchtower with minimal privileges
-    user: root
     command: --label-enable --cleanup --interval 21600
