@@ -19,7 +19,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     # Network configuration for HomeKit
-    network_mode: host
+    ports:
+      - "51827:51827" # HomeKit HAP port
     # Privileged mode for Bluetooth access
     privileged: true
     # Device access for Bluetooth
