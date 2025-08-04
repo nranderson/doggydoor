@@ -105,17 +105,23 @@ AUTO_UNLOCK_TIMEOUT_MINUTES=10
 ### 1. Test AirTag Detection (Optional)
 
 ```bash
-# Test AirTag detection using Docker
-docker run --rm --privileged doggydoor:latest python tools/scan_airtags.py
+# Test AirTag detection using Docker (local build)
+docker run --rm --privileged --net=host -v /var/run/dbus:/var/run/dbus doggydoor:latest python tools/scan_airtags.py
+
+# OR using pre-built image
+docker run --rm --privileged --net=host -v /var/run/dbus:/var/run/dbus ghcr.io/nranderson/doggydoor:latest python tools/scan_airtags.py
 ```
 
-This will scan for nearby Apple devices and confirm the system can detect AirTags.
+**Note:** The `--privileged`, `--net=host`, and `-v /var/run/dbus:/var/run/dbus` flags are required for Bluetooth access. This will scan for nearby Apple devices and confirm the system can detect AirTags.
 
 ### 2. Calibrate Distance (Optional)
 
 ```bash
-# Calibrate distance estimation using Docker
-docker run --rm --privileged -it doggydoor:latest python tools/calibrate_distance.py
+# Calibrate distance estimation using Docker (local build)
+docker run --rm --privileged --net=host -v /var/run/dbus:/var/run/dbus -it doggydoor:latest python tools/calibrate_distance.py
+
+# OR using pre-built image
+docker run --rm --privileged --net=host -v /var/run/dbus:/var/run/dbus -it ghcr.io/nranderson/doggydoor:latest python tools/calibrate_distance.py
 ```
 
 Place an AirTag at a known distance and run this tool to improve distance accuracy.
@@ -208,10 +214,16 @@ The system includes **Watchtower** for automatic container updates:
 
 ### AirTag Not Detected
 
-- Ensure AirTag is nearby and active (shake it)
+- Ensure AirTag is nearby and active (shake it to activate)
 - Check Bluetooth is enabled: `sudo systemctl status bluetooth`
-- Test AirTag detection: `docker run --rm --privileged doggydoor:latest python tools/scan_airtags.py`
+- Test AirTag detection:
+
+  ```bash
+  docker run --rm --privileged --net=host -v /var/run/dbus:/var/run/dbus ghcr.io/nranderson/doggydoor:latest python tools/scan_airtags.py
+  ```
+
 - Verify container has Bluetooth access
+- Make sure D-Bus is running: `sudo systemctl status dbus`
 
 ### Docker Issues
 

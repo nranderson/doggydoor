@@ -18,6 +18,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./.env:/app/.env:ro  # Mount .env file as read-only
+      - /var/run/dbus:/var/run/dbus  # D-Bus for Bluetooth communication
     # Environment variables
     env_file:
       - .env

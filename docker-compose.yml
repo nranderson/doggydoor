@@ -12,6 +12,7 @@ services:
       - .:/app
       - ./data:/app/data
       - ./logs:/app/logs
+      - /var/run/dbus:/var/run/dbus # D-Bus for Bluetooth communication
     # Environment variables
     env_file:
       - .env
