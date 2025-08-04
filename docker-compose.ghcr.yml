@@ -9,10 +9,8 @@ services:
     container_name: doggydoor-app
     # Run the main doggy door application
     command: python src/main.py
-    # Mount only necessary directories
+    # Mount only necessary files/directories
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
       - ./.env:/app/.env:ro # Mount .env file as read-only
       - /var/run/dbus:/var/run/dbus # D-Bus for Bluetooth communication
     # Environment variables
