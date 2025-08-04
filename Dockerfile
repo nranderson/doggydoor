@@ -27,8 +27,9 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Change ownership of the app directory to the appuser
-RUN chown -R appuser:appuser /app
+# Create necessary directories and change ownership
+RUN mkdir -p /app/logs /app/data && \
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
