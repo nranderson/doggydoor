@@ -102,7 +102,7 @@ class HomeKitController:
     async def _run_driver(self):
         """Run the HomeKit driver"""
         try:
-            self.driver.start()
+            await self.driver.async_start()
         except Exception as e:
             logger.error(f"HomeKit driver error: {e}")
     
